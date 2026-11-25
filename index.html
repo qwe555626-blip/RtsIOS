@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#171f1c">
+  <title>红色警戒：前线</title>
+  <style>
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;background:#101513;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;overflow:hidden;touch-action:none}.app{height:100dvh;display:flex;flex-direction:column;padding:8px}.top{height:58px;display:flex;align-items:center;justify-contentspace-between;padding:0 8px}.title{font-weight:900}.title small{display:block;color:#9aa;opacity:.8;font-size:11px;margin-top:2px}.stats{text-align:right;font-size:12px}.credits{color:#ffd84a;font-weight:900}.hp{display:flex;gap:8px;margin-top:5px}.blue{color:#67ddff}.red{color:#ff6a62}canvas{width:100%;flex:1;min-height:0;border:1px solid #ffffff22;border-radius:12px;background:#354732}.bottom{height:76px;display:grid;grid-template-columns:1fr 1fr 72px;gap:8px;padding-top:8px}.btn{border:1px solid #ffffff22;border-radius:10px;color:#fff;font-weight:800;background:#205a72}.btn:active{transform:scale(.97)}.harvest{background:#28766d}.restart{background:#444}.tip{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);background:#000a;padding:6px 10px;border-radius:20px;font-size:11px;white-space:nowrap}.overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#0008}.card{background:#18201df5;border:1px solid #fff2;border-radius:16px;padding:24px;text-align:center}.card h2{margin:0 0 16px}.card button{border:0;border-radius:10px;padding:12px 20px;color:#fff;background:#2673ad;font-weight:900}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div class="title">红色警戒：前线<small>迷你即时战略</small></div><div class="stats"><div class="credits" id="credits">◆ 800</div><div class="hp"><span class="blue" id="blueHp">我方 500</span><span class="red" id="redHp">敌�� 500</span></div></div></div>
+  <canvas id="game"></canvas>
+  <div class="bottom"><button class="btn" id="tank">● 造坦克<br><small>300 资金</small></button><button class="btn harvest" id="harvester">▰ 造采矿车<br><small>200 资金</small></button><button class="btn restart" id="restart">重开</button></div>
+  <div class="tip" id="tip">点选部队，再点战场移动</div>
+  <div class="overlay" id="overlay"><div class="card"><h2 id="result">胜利</h2><button id="again">再来一局</button></div></div>
+</div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const W=1000,H=600;let units=[],credits=800,blueBase=500,redBase=500,selected=null,ended=false,last=0;
+function unit(team,kind,x,y){return{id:Math.random(),team,kind,x,y,dx:x,dy:y,hp:kind==='tank'?100:140,cool:0}}
+function reset(){units=[unit('blue','tank',170,255),unit('blue','tank',170,345),unit('blue','harvester',115,420),unit('red','tank',820,255),unit('red','tank',820,345)];credits=800;blueBase=500;redBase=500;selected=null;ended=false;document.getElementById('overlay').style.display='none'}
+function resize(){const r=canvas.getBoundingRect?canvas.getBoundingClientRect():canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio}addEventListener('resize',resize);resize();
+function pos(e){const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)/r.width*W,y:(p.clientY-r.top)/r.height*H}}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+canvas.addEventListener('pointerdown',e=>{if(ended)return;const p=pos(e);const hit=units.find(u=>u.team==='blue'&&dist(u,p)<38);if(hit){selected=hit.id;document.getElementById('tip').textContent='已选中 '+(hit.kind==='tank'?'坦克':'采矿车')}else{const u=units.find(v=>v.id===selected);if(u){u.dx=p.x;u.dy=p.y;document.getElementById('tip').textContent='移动指令已下达'}}});
+function build(kind){if(ended)return;const cost=kind==='tank'?300:200;if(credits<cost)return;credits-=cost;const u=unit('blue',kind,150,kind==='tank'?300:425);units.push(u);selected=u.id}
+document.getElementById('tank').onclick=()=>build('tank');document.getElementById('harvester').onclick=()=>build('harvester');document.getElementById('restart').onclick=reset;document.getElementById('again').onclick=reset;
+function draw(){const sx=canvas.width/W,sy=canvas.height/H;ctx.setTransform(sx,0,0,sy,0,0);ctx.fillStyle='#3a5037';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#ffffff10';ctx.lineWidth=1;for(let x=0;x<W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=50){ctx.beginPath();ctx.moveTo(y,0);ctx.lineTo(W,y);ctx.stroke()}ctx.fillStyle='#77745c';ctx.fillRect(0,270,1000,60);ctx.fillStyle='#a67c1d';[[260,190],[285,205],[735,410],[765,390],[745,435]].forEach(a=>{ctx.beginPath();ctx.ellipse(a[0],a[1],14,9,0,0,7);ctx.fill()});base(100,300,'blue',blueBase);base(900,300,'red',redBase);units.forEach(u=>{ctx.beginPath();ctx.fillStyle=u.team==='blue'?'#55c8ed':'#ed554c';ctx.roundRect(u.x-16,u.y-11,32,22,5);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(u.x,u.y);ctx.lineTo(u.x+(u.team==='blue'?30:-30),u.y);ctx.stroke();ctx.fillStyle='#111a';ctx.fillRect(u.x-20,u.y-23,40,5);ctx.fillStyle='#54df7a';ctx.fillRect(u.x-20,u.y-23,40*(u.hp/(u.kind==='tank'?100:140)),5);if(u.id===selected){ctx.strokeStyle='#ffe44d';ctx.lineWidth=3;ctx.beginPath();ctx.arc(u.x,u.y,25,0,7);ctx.stroke()}})}
+function base(x,y,team,hp){ctx.fillStyle=team==='blue'?'#287ab4':'#b63d35';ctx.fillRect(x-38,y-35,76,70);ctx.strokeStyle='#fff';ctx.strokeRect(x-38,y-35,76,70);ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText(team==='blue'?'基地':'敌营',x,y+5);ctx.fillStyle='#000';ctx.fillRect(x-42,y+42,84,7);ctx.fillStyle=team==='blue'?'#55c8ed':'#ff665c';ctx.fillRect(x-42,y+42,84*Math.max(0,hp/500),7)}
+function update(dt){if(ended)return;if(dt){units.forEach(u=>{u.cool=Math.max(0,u.cool-dt);if(u.team==='red'){u.dx=120;u.dy=300}const enemies=units.filter(v=>v.team!==u.team);let target=enemies.sort((a,b)=>dist(u,a)-dist(u,b))[0];if(target&&dist(u,target)<54){if(u.cool<=0){target.hp-=u.team==='blue'?13:10;u.cool=.8}return}if(u.team==='blue'&&dist(u,{x:900,y:300})<68||u.team==='red'&&dist(u,{x:100,y:300})<68){if(u.cool<=0){if(u.team==='blue')redBase-=12;else blueBase-=10;u.cool=.8}return}const dx=u.dx-u.x,dy=u.dy-u.y,len=Math.hypot(dx,dy);if(len>2){const sp=u.kind==='tank'?90:55,uDt=sp*dt;u.x+=dx/len*Math.min(uDt,len);u.y+=dy/len*Math.min(uDt,len)}});units=units.filter(u=>u.hp>0);if(redBase<=0){redBase=0;ended=true;show('胜利！敌方基地已摧毁')}if(blueBase<=0){blueBase=0;ended=true;show('基地失守！')}}
+function show(text){document.getElementById('result').textContent=text;document.getElementById('overlay').style.display='flex'}
+setInterval(()=>{if(!ended){credits+=units.filter(u=>u.team==='blue'&&u.kind==='harvester').length*25}},3000);
+function loop(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;update(dt);draw();document.getElementById('credits').textContent='◆ '+credits;document.getElementById('blueHp').textContent='我方 '+Math.max(0,blueBase);document.getElementById('redHp').textContent='敌方 '+Math.max(0,redBase);requestAnimationFrame(loop)}reset();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
